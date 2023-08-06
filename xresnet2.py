@@ -115,20 +115,24 @@ class XResNet(Module):
             if isinstance(m, nn.Linear): m.weight.data.normal_(0, 0.01)
 
     def _make_layer(self, block, planes, blocks, stride=1):
-        downsample = None
-        if stride != 1 or self.inplanes != planes * block.expansion:
-            layers = []
-            if stride==2: layers.append(nn.AvgPool2d(kernel_size=2, stride=2))
-            layers += [
-                nn.Conv2d(self.inplanes, planes * block.expansion, kernel_size=1, stride=1, bias=False),
-                nn.BatchNorm2d(planes * block.expansion) ]
-            downsample = nn.Sequential(*layers)
-
+    downsample = None
+    if stride != 1 or self.inplanes != planes * block.expansion:
         layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample))
-        self.inplanes = planes * block.expansion
-        for i in range(1, blocks): layers.append(block(self.inplanes, planes))
-        return nn.Sequential(*layers)
+        if stride==2: layers.append(nn.AvgPool2d(kernel_size=2, stride=2))
+        layers += [
+            nn.Conv2d(self.inplanes, planes * block.expansion, kernel_size=1, stride=1, bias=False),
+            nn.BatchNorm2d(planes * block.expansion) ]
+        downsample = nn.Sequential(*layers)
+
+    layers = []
+    layers.append(block(self.inplanes, planes, stride, downsample))
+    self.inplanes = planes * block.expansion
+    for i in range(1, blocks):
+        if self.inplanes == planes * block.expansion:
+            layers.append(block(self.inplanes, planes))
+        else:
+            layers.append(block(self.inplanes, planes, 1, None))
+    return nn.Sequential(*layers)
 
     def forward(self, x):
         x = self.conv1(x)
